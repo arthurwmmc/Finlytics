@@ -1,0 +1,155 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  categories     Category[]
+  accounts       Account[]
+  creditCards    CreditCard[]
+  transactions   Transaction[]
+  recurringRules RecurringRule[]
+  goals          Goal[]
+}
+
+model Category {
+  id            String  @id @default(cuid())
+  name          String
+  type          String // INCOME | EXPENSE
+  color         String
+  icon          String
+  monthlyBudget Int? // centavos; null = sem orçamento
+  userId        String
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  transactions   Transaction[]
+  recurringRules RecurringRule[]
+
+  @@index([userId])
+}
+
+model Account {
+  id             String @id @default(cuid())
+  name           String
+  type           String // CHECKING | SAVINGS | CASH | INVESTMENT
+  color          String
+  initialBalance Int    @default(0) // centavos
+  userId         String
+  user           User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  transactions   Transaction[]
+  recurringRules RecurringRule[]
+
+  @@index([userId])
+}
+
+model CreditCard {
+  id         String @id @default(cuid())
+  name       String
+  brand      String // VISA | MASTERCARD | ELO | AMEX | OUTRO
+  color      String
+  limit      Int // centavos
+  closingDay Int // dia do fechamento da fatura
+  dueDay     Int // dia do vencimento
+  userId     String
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  transactions   Transaction[]
+  recurringRules RecurringRule[]
+
+  @@index([userId])
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  description String
+  amount      Int // centavos, sempre positivo; type define o sinal
+  date        DateTime
+  type        String // INCOME | EXPENSE
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  accountId String?
+  account   Account? @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  creditCardId String?
+  creditCard   CreditCard? @relation(fields: [creditCardId], references: [id], onDelete: Cascade)
+
+  installmentGroupId String?
+  installmentNumber  Int?
+  installmentTotal   Int?
+
+  recurringRuleId String?
+  recurringRule   RecurringRule? @relation(fields: [recurringRuleId], references: [id], onDelete: SetNull)
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId, date])
+  @@index([installmentGroupId])
+}
+
+model RecurringRule {
+  id              String  @id @default(cuid())
+  description     String
+  amount          Int // centavos
+  type            String // INCOME | EXPENSE
+  dayOfMonth      Int
+  active          Boolean @default(true)
+  lastPostedMonth String? // "YYYY-MM" da última materialização
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  accountId String?
+  account   Account? @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  creditCardId String?
+  creditCard   CreditCard? @relation(fields: [creditCardId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  transactions Transaction[]
+  createdAt    DateTime      @default(now())
+
+  @@index([userId])
+}
+
+model Goal {
+  id           String    @id @default(cuid())
+  name         String
+  icon         String
+  color        String
+  targetAmount Int // centavos
+  targetDate   DateTime?
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  contributions GoalContribution[]
+  createdAt     DateTime           @default(now())
+
+  @@index([userId])
+}
+
+model GoalContribution {
+  id     String   @id @default(cuid())
+  amount Int // centavos
+  date   DateTime @default(now())
+  goalId String
+  goal   Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@index([goalId])
+}
