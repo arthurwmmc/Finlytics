@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { LogOut } from "lucide-react";
 import { logout } from "@/lib/actions/auth";
 
@@ -10,7 +11,11 @@ export function Header({ userName }: { userName: string }) {
 
   return (
     <header className="flex items-center justify-end gap-3 mb-6">
-      <div className="flex items-center gap-3 glass rounded-full pl-4 pr-1.5 py-1.5">
+      <Link
+        href="/settings"
+        className="flex items-center gap-3 glass glass-hover rounded-full pl-4 pr-1.5 py-1.5"
+        title="Abrir ajustes do perfil"
+      >
         <span className="text-sm text-foreground/90 max-w-40 truncate">
           {userName}
         </span>
@@ -20,7 +25,7 @@ export function Header({ userName }: { userName: string }) {
         >
           {initials}
         </span>
-      </div>
+      </Link>
       <form action={logout}>
         <button
           type="submit"

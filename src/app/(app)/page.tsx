@@ -317,6 +317,9 @@ export default async function DashboardPage({
                     <p className="text-sm truncate">{card.name}</p>
                     <p className="text-[11px] text-muted">
                       vence {invoice.dueDate.toLocaleDateString("pt-BR")}
+                      {invoice.total > 0 && invoice.paid >= invoice.total && (
+                        <span className="text-income"> · paga ✓</span>
+                      )}
                     </p>
                   </div>
                   <span className="tabular text-sm font-semibold">
@@ -354,31 +357,53 @@ export default async function DashboardPage({
             />
           ) : (
             <ul className="space-y-2.5">
-              {recentTx.map((tx) => (
-                <li key={tx.id} className="flex items-center gap-3">
-                  <span
-                    className="size-8 rounded-lg flex items-center justify-center text-sm shrink-0 border border-white/10"
-                    style={{ background: `${tx.category.color}26` }}
-                    aria-hidden
-                  >
-                    {tx.category.icon}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm truncate">{tx.description}</p>
-                    <p className="text-[11px] text-muted">
-                      {tx.date.toLocaleDateString("pt-BR")} · {tx.category.name}
-                    </p>
-                  </div>
-                  <span
-                    className={`tabular text-sm font-semibold ${
-                      tx.type === "INCOME" ? "text-income" : "text-expense"
-                    }`}
-                  >
-                    {tx.type === "INCOME" ? "+" : "−"}
-                    {formatBRL(tx.amount)}
-                  </span>
-                </li>
-              ))}
+              {recentTx.map((tx) => {
+                const label =
+                  tx.category?.name ??
+                  (tx.type === "TRANSFER"
+                    ? "Transferência"
+                    : "Pagamento de fatura");
+                const icon =
+                  tx.category?.icon ??
+                  (tx.type === "TRANSFER" ? "🔁" : "💸");
+                return (
+                  <li key={tx.id} className="flex items-center gap-3">
+                    <span
+                      className="size-8 rounded-lg flex items-center justify-center text-sm shrink-0 border border-white/10"
+                      style={{
+                        background: tx.category
+                          ? `${tx.category.color}26`
+                          : "rgba(34,211,238,0.12)",
+                      }}
+                      aria-hidden
+                    >
+                      {icon}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm truncate">{tx.description}</p>
+                      <p className="text-[11px] text-muted">
+                        {tx.date.toLocaleDateString("pt-BR")} · {label}
+                      </p>
+                    </div>
+                    <span
+                      className={`tabular text-sm font-semibold ${
+                        tx.type === "INCOME"
+                          ? "text-income"
+                          : tx.type === "EXPENSE"
+                            ? "text-expense"
+                            : "text-accent-cyan"
+                      }`}
+                    >
+                      {tx.type === "INCOME"
+                        ? "+"
+                        : tx.type === "EXPENSE"
+                          ? "−"
+                          : ""}
+                      {formatBRL(tx.amount)}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </GlassCard>

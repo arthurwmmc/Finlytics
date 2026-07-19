@@ -32,9 +32,10 @@ export type TransactionDTO = {
   description: string;
   amount: number;
   date: string; // ISO
-  type: string;
-  categoryId: string;
+  type: string; // INCOME | EXPENSE | TRANSFER | CARD_PAYMENT
+  categoryId: string | null;
   accountId: string | null;
+  toAccountId: string | null;
   creditCardId: string | null;
   installmentGroupId: string | null;
   installmentNumber: number | null;

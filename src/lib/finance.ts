@@ -45,22 +45,37 @@ export async function getMonthlySummary(userId: string, ym: string) {
   return { income, expense, net: income - expense };
 }
 
-/** Saldo de cada conta = saldo inicial + receitas - despesas lançadas nela. */
+/**
+ * Saldo de cada conta = saldo inicial + receitas − despesas − pagamentos de
+ * fatura − transferências enviadas + transferências recebidas.
+ */
 export async function getAccountsWithBalances(userId: string) {
   const accounts = await prisma.account.findMany({
     where: { userId },
     orderBy: { name: "asc" },
   });
-  const sums = await prisma.transaction.groupBy({
-    by: ["accountId", "type"],
-    where: { userId, accountId: { not: null } },
-    _sum: { amount: true },
-  });
+  const [outgoing, incoming] = await Promise.all([
+    prisma.transaction.groupBy({
+      by: ["accountId", "type"],
+      where: { userId, accountId: { not: null } },
+      _sum: { amount: true },
+    }),
+    prisma.transaction.groupBy({
+      by: ["toAccountId"],
+      where: { userId, type: "TRANSFER", toAccountId: { not: null } },
+      _sum: { amount: true },
+    }),
+  ]);
   return accounts.map((account) => {
     let balance = account.initialBalance;
-    for (const s of sums) {
+    for (const s of outgoing) {
       if (s.accountId !== account.id) continue;
-      balance += (s.type === "INCOME" ? 1 : -1) * (s._sum.amount ?? 0);
+      const amount = s._sum.amount ?? 0;
+      if (s.type === "INCOME") balance += amount;
+      else balance -= amount; // EXPENSE, TRANSFER (saída) e CARD_PAYMENT
+    }
+    for (const s of incoming) {
+      if (s.toAccountId === account.id) balance += s._sum.amount ?? 0;
     }
     return { ...account, balance };
   });
@@ -99,13 +114,16 @@ export async function getExpensesByCategory(userId: string, ym: string) {
     _sum: { amount: true },
   });
   const categories = await prisma.category.findMany({
-    where: { userId, id: { in: grouped.map((g) => g.categoryId) } },
+    where: {
+      userId,
+      id: { in: grouped.flatMap((g) => (g.categoryId ? [g.categoryId] : [])) },
+    },
   });
   return grouped
     .map((g) => {
       const category = categories.find((c) => c.id === g.categoryId);
       return {
-        categoryId: g.categoryId,
+        categoryId: g.categoryId ?? "sem-categoria",
         name: category?.name ?? "?",
         color: category?.color ?? "#8b93a7",
         icon: category?.icon ?? "❓",
@@ -117,8 +135,23 @@ export async function getExpensesByCategory(userId: string, ym: string) {
 
 /**
  * Evolução do saldo total das contas ao fim de cada um dos últimos N meses.
- * Considera apenas transações em contas (cartão não afeta saldo até ser pago).
+ * Considera transações em contas (compra no cartão não afeta saldo; o
+ * CARD_PAYMENT afeta). Transferências entre contas se anulam no agregado e
+ * ficam de fora.
  */
+function netFromGroups(
+  groups: { type: string; _sum: { amount: number | null } }[]
+): number {
+  let net = 0;
+  for (const g of groups) {
+    const amount = g._sum.amount ?? 0;
+    if (g.type === "INCOME") net += amount;
+    else if (g.type === "EXPENSE" || g.type === "CARD_PAYMENT") net -= amount;
+    // TRANSFER: neutro no total agregado das contas
+  }
+  return net;
+}
+
 export async function getBalanceSeries(userId: string, ym: string, months = 6) {
   const accounts = await prisma.account.findMany({ where: { userId } });
   const initialTotal = accounts.reduce((sum, a) => sum + a.initialBalance, 0);
@@ -131,10 +164,7 @@ export async function getBalanceSeries(userId: string, ym: string, months = 6) {
     where: { userId, accountId: { not: null }, date: { lt: firstStart } },
     _sum: { amount: true },
   });
-  let running =
-    initialTotal +
-    (before.find((g) => g.type === "INCOME")?._sum.amount ?? 0) -
-    (before.find((g) => g.type === "EXPENSE")?._sum.amount ?? 0);
+  let running = initialTotal + netFromGroups(before);
 
   const series: { ym: string; label: string; balance: number }[] = [];
   for (let i = months - 1; i >= 0; i--) {
@@ -149,9 +179,7 @@ export async function getBalanceSeries(userId: string, ym: string, months = 6) {
       },
       _sum: { amount: true },
     });
-    running +=
-      (grouped.find((g) => g.type === "INCOME")?._sum.amount ?? 0) -
-      (grouped.find((g) => g.type === "EXPENSE")?._sum.amount ?? 0);
+    running += netFromGroups(grouped);
     const [y, m] = target.split("-").map(Number);
     series.push({
       ym: target,
@@ -204,7 +232,7 @@ export function invoicePeriod(
   return { start, end, dueDate };
 }
 
-/** Total da fatura de um cartão no mês de referência. */
+/** Total da fatura de um cartão no mês de referência + pagamentos feitos. */
 export async function getInvoiceTotal(
   userId: string,
   cardId: string,
@@ -213,18 +241,122 @@ export async function getInvoiceTotal(
   dueDay: number
 ) {
   const { start, end, dueDate } = invoicePeriod(ym, closingDay, dueDay);
+  // pagamentos contam do início do período (antecipado, fatura ainda aberta)
+  // até um mês após o fechamento (fluxo normal: pagar depois de fechar)
+  const nextClosing = new Date(end);
+  nextClosing.setMonth(nextClosing.getMonth() + 1);
+  const [grouped, payments] = await Promise.all([
+    prisma.transaction.groupBy({
+      by: ["type"],
+      where: {
+        userId,
+        creditCardId: cardId,
+        type: { in: ["EXPENSE", "INCOME"] },
+        date: { gte: start, lt: end },
+      },
+      _sum: { amount: true },
+    }),
+    prisma.transaction.aggregate({
+      where: {
+        userId,
+        creditCardId: cardId,
+        type: "CARD_PAYMENT",
+        date: { gte: start, lt: nextClosing },
+      },
+      _sum: { amount: true },
+    }),
+  ]);
+  const expense = grouped.find((g) => g.type === "EXPENSE")?._sum.amount ?? 0;
+  const refunds = grouped.find((g) => g.type === "INCOME")?._sum.amount ?? 0;
+  return {
+    total: expense - refunds,
+    paid: payments._sum.amount ?? 0,
+    start,
+    end,
+    dueDate,
+  };
+}
+
+/**
+ * Saldo devedor do cartão (todo o histórico):
+ * compras − estornos − pagamentos de fatura, com piso em zero.
+ */
+export async function getCardOutstanding(userId: string, cardId: string) {
+  const grouped = await prisma.transaction.groupBy({
+    by: ["type"],
+    where: { userId, creditCardId: cardId },
+    _sum: { amount: true },
+  });
+  const sum = (type: string) =>
+    grouped.find((g) => g.type === type)?._sum.amount ?? 0;
+  return Math.max(0, sum("EXPENSE") - sum("INCOME") - sum("CARD_PAYMENT"));
+}
+
+/** Totais de receita/despesa de um ano inteiro. */
+export async function getYearSummary(userId: string, year: number) {
+  const start = new Date(year, 0, 1);
+  const end = new Date(year + 1, 0, 1);
   const grouped = await prisma.transaction.groupBy({
     by: ["type"],
     where: {
       userId,
-      creditCardId: cardId,
+      type: { in: ["INCOME", "EXPENSE"] },
       date: { gte: start, lt: end },
     },
     _sum: { amount: true },
   });
+  const income = grouped.find((g) => g.type === "INCOME")?._sum.amount ?? 0;
   const expense = grouped.find((g) => g.type === "EXPENSE")?._sum.amount ?? 0;
-  const refunds = grouped.find((g) => g.type === "INCOME")?._sum.amount ?? 0;
-  return { total: expense - refunds, start, end, dueDate };
+  return { income, expense, net: income - expense };
+}
+
+/**
+ * Matriz de despesas categoria × mês de um ano, ordenada pelo total anual.
+ * Volume pessoal é pequeno — agrega em memória.
+ */
+export async function getYearCategoryMatrix(userId: string, year: number) {
+  const start = new Date(year, 0, 1);
+  const end = new Date(year + 1, 0, 1);
+  const [transactions, categories] = await Promise.all([
+    prisma.transaction.findMany({
+      where: { userId, type: "EXPENSE", date: { gte: start, lt: end } },
+      select: { amount: true, date: true, categoryId: true },
+    }),
+    prisma.category.findMany({ where: { userId, type: "EXPENSE" } }),
+  ]);
+
+  const byCategory = new Map<string, number[]>();
+  for (const tx of transactions) {
+    const key = tx.categoryId ?? "sem-categoria";
+    const months = byCategory.get(key) ?? Array(12).fill(0);
+    months[tx.date.getMonth()] += tx.amount;
+    byCategory.set(key, months);
+  }
+
+  const rows = [...byCategory.entries()]
+    .map(([categoryId, months]) => {
+      const category = categories.find((c) => c.id === categoryId);
+      return {
+        categoryId,
+        name: category?.name ?? "Sem categoria",
+        icon: category?.icon ?? "📦",
+        color: category?.color ?? "#8b93a7",
+        months,
+        total: months.reduce((sum, v) => sum + v, 0),
+      };
+    })
+    .sort((a, b) => b.total - a.total);
+
+  const monthlyTotals = Array(12).fill(0) as number[];
+  for (const row of rows)
+    row.months.forEach((v, i) => (monthlyTotals[i] += v));
+
+  const maxCell = rows.reduce(
+    (max, row) => Math.max(max, ...row.months),
+    0
+  );
+
+  return { rows, monthlyTotals, maxCell };
 }
 
 /** Orçamentos: consumo do mês por categoria com limite definido. */

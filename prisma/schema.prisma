@@ -48,6 +48,7 @@ model Account {
   user           User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   transactions   Transaction[]
+  transfersIn    Transaction[]   @relation("TransferDestination")
   recurringRules RecurringRule[]
 
   @@index([userId])
@@ -75,13 +76,19 @@ model Transaction {
   description String
   amount      Int // centavos, sempre positivo; type define o sinal
   date        DateTime
-  type        String // INCOME | EXPENSE
+  type        String // INCOME | EXPENSE | TRANSFER | CARD_PAYMENT
 
-  categoryId String
-  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  // nula para TRANSFER e CARD_PAYMENT
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 
+  // origem (TRANSFER/CARD_PAYMENT: conta debitada)
   accountId String?
   account   Account? @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  // destino de TRANSFER
+  toAccountId String?
+  toAccount   Account? @relation("TransferDestination", fields: [toAccountId], references: [id], onDelete: Cascade)
 
   creditCardId String?
   creditCard   CreditCard? @relation(fields: [creditCardId], references: [id], onDelete: Cascade)

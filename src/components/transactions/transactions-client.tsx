@@ -1,7 +1,16 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { CreditCard, Pencil, Plus, Search, Trash2, Wallet } from "lucide-react";
+import {
+  ArrowRight,
+  CreditCard,
+  Download,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  Wallet,
+} from "lucide-react";
 import {
   deleteInstallmentGroup,
   deleteTransaction,
@@ -18,6 +27,8 @@ import type {
   CategoryDTO,
   TransactionDTO,
 } from "@/lib/types";
+
+const MOVEMENT_TYPES = ["TRANSFER", "CARD_PAYMENT"];
 
 export function TransactionsClient({
   transactions,
@@ -49,11 +60,16 @@ export function TransactionsClient({
   const cardById = useMemo(() => new Map(cards.map((c) => [c.id, c])), [cards]);
 
   const filtered = transactions.filter((tx) => {
-    if (typeFilter && tx.type !== typeFilter) return false;
+    if (typeFilter === "MOVEMENTS") {
+      if (!MOVEMENT_TYPES.includes(tx.type)) return false;
+    } else if (typeFilter && tx.type !== typeFilter) {
+      return false;
+    }
     if (categoryFilter && tx.categoryId !== categoryFilter) return false;
     if (paymentFilter) {
       const [kind, id] = paymentFilter.split(":");
-      if (kind === "account" && tx.accountId !== id) return false;
+      if (kind === "account" && tx.accountId !== id && tx.toAccountId !== id)
+        return false;
       if (kind === "card" && tx.creditCardId !== id) return false;
     }
     if (
@@ -67,7 +83,7 @@ export function TransactionsClient({
   const totals = filtered.reduce(
     (acc, tx) => {
       if (tx.type === "INCOME") acc.income += tx.amount;
-      else acc.expense += tx.amount;
+      else if (tx.type === "EXPENSE") acc.expense += tx.amount;
       return acc;
     },
     { income: 0, expense: 0 }
@@ -119,6 +135,7 @@ export function TransactionsClient({
             <option value="">Tudo</option>
             <option value="INCOME">Receitas</option>
             <option value="EXPENSE">Despesas</option>
+            <option value="MOVEMENTS">Transferências e pagamentos</option>
           </Select>
           <Select
             value={categoryFilter}
@@ -151,6 +168,13 @@ export function TransactionsClient({
               </option>
             ))}
           </Select>
+          <a
+            href="/api/export"
+            className="glass glass-hover rounded-xl px-3.5 py-2.5 text-sm text-muted hover:text-foreground inline-flex items-center gap-1.5"
+            title="Exportar todas as transações em CSV"
+          >
+            <Download size={15} /> CSV
+          </a>
           <button
             onClick={() => {
               setEditing(null);
@@ -187,12 +211,15 @@ export function TransactionsClient({
         ) : (
           <ul className="divide-y divide-white/5">
             {filtered.map((tx) => {
-              const category = categoryById.get(tx.categoryId);
-              const paymentLabel = tx.creditCardId
-                ? cardById.get(tx.creditCardId)?.name
-                : tx.accountId
-                  ? accountById.get(tx.accountId)?.name
-                  : "—";
+              const category = tx.categoryId
+                ? categoryById.get(tx.categoryId)
+                : undefined;
+              const isTransfer = tx.type === "TRANSFER";
+              const isPayment = tx.type === "CARD_PAYMENT";
+              const icon = category?.icon ?? (isTransfer ? "🔁" : isPayment ? "💸" : "❓");
+              const iconBg = category
+                ? `${category.color}26`
+                : "rgba(34,211,238,0.12)";
               return (
                 <li
                   key={tx.id}
@@ -200,10 +227,10 @@ export function TransactionsClient({
                 >
                   <span
                     className="size-9 rounded-xl flex items-center justify-center text-base shrink-0 border border-white/10"
-                    style={{ background: `${category?.color ?? "#8b93a7"}26` }}
+                    style={{ background: iconBg }}
                     aria-hidden
                   >
-                    {category?.icon ?? "❓"}
+                    {icon}
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm truncate">{tx.description}</p>
@@ -211,15 +238,52 @@ export function TransactionsClient({
                       <span>
                         {new Date(tx.date).toLocaleDateString("pt-BR")}
                       </span>
-                      · <span>{category?.name}</span> ·
-                      <span className="inline-flex items-center gap-1">
-                        {tx.creditCardId ? (
-                          <CreditCard size={11} aria-label="cartão" />
-                        ) : (
-                          <Wallet size={11} aria-label="conta" />
-                        )}
-                        {paymentLabel}
-                      </span>
+                      {isTransfer ? (
+                        <>
+                          ·
+                          <span className="inline-flex items-center gap-1">
+                            <Wallet size={11} aria-hidden />
+                            {tx.accountId
+                              ? accountById.get(tx.accountId)?.name
+                              : "—"}
+                            <ArrowRight size={10} aria-label="para" />
+                            {tx.toAccountId
+                              ? accountById.get(tx.toAccountId)?.name
+                              : "—"}
+                          </span>
+                        </>
+                      ) : isPayment ? (
+                        <>
+                          ·
+                          <span className="inline-flex items-center gap-1">
+                            <Wallet size={11} aria-hidden />
+                            {tx.accountId
+                              ? accountById.get(tx.accountId)?.name
+                              : "—"}
+                            <ArrowRight size={10} aria-label="para" />
+                            <CreditCard size={11} aria-hidden />
+                            {tx.creditCardId
+                              ? cardById.get(tx.creditCardId)?.name
+                              : "—"}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          · <span>{category?.name}</span> ·
+                          <span className="inline-flex items-center gap-1">
+                            {tx.creditCardId ? (
+                              <CreditCard size={11} aria-label="cartão" />
+                            ) : (
+                              <Wallet size={11} aria-label="conta" />
+                            )}
+                            {tx.creditCardId
+                              ? cardById.get(tx.creditCardId)?.name
+                              : tx.accountId
+                                ? accountById.get(tx.accountId)?.name
+                                : "—"}
+                          </span>
+                        </>
+                      )}
                       {tx.recurringRuleId && (
                         <span className="rounded-full bg-accent-violet/15 text-accent-violet px-2 py-px text-[10px]">
                           recorrente
@@ -229,23 +293,29 @@ export function TransactionsClient({
                   </div>
                   <span
                     className={`tabular text-sm font-semibold shrink-0 ${
-                      tx.type === "INCOME" ? "text-income" : "text-expense"
+                      tx.type === "INCOME"
+                        ? "text-income"
+                        : tx.type === "EXPENSE"
+                          ? "text-expense"
+                          : "text-accent-cyan"
                     }`}
                   >
-                    {tx.type === "INCOME" ? "+" : "−"}
+                    {tx.type === "INCOME" ? "+" : tx.type === "EXPENSE" ? "−" : ""}
                     {formatBRL(tx.amount)}
                   </span>
                   <span className="flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition">
-                    <button
-                      onClick={() => {
-                        setEditing(tx);
-                        setModalOpen(true);
-                      }}
-                      className="rounded-lg p-1.5 text-muted hover:text-foreground hover:bg-white/10"
-                      aria-label={`Editar ${tx.description}`}
-                    >
-                      <Pencil size={14} />
-                    </button>
+                    {!isPayment && (
+                      <button
+                        onClick={() => {
+                          setEditing(tx);
+                          setModalOpen(true);
+                        }}
+                        className="rounded-lg p-1.5 text-muted hover:text-foreground hover:bg-white/10"
+                        aria-label={`Editar ${tx.description}`}
+                      >
+                        <Pencil size={14} />
+                      </button>
+                    )}
                     <button
                       onClick={() => handleDelete(tx)}
                       className="rounded-lg p-1.5 text-muted hover:text-expense hover:bg-expense/10"
@@ -264,7 +334,13 @@ export function TransactionsClient({
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editing ? "Editar transação" : "Nova transação"}
+        title={
+          editing
+            ? editing.type === "TRANSFER"
+              ? "Editar transferência"
+              : "Editar transação"
+            : "Nova transação"
+        }
       >
         <TransactionForm
           key={editing?.id ?? "new"}

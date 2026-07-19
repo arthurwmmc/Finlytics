@@ -14,13 +14,20 @@ pessoa cria sua conta com e-mail e senha e vê apenas os próprios dados).
   por tipo/categoria/conta/busca e navegação por mês.
 - **Cartões de crédito**: limite, fechamento e vencimento; fatura calculada por
   período com navegação mês a mês; **compras parceladas** (até 24x) lançadas
-  automaticamente nas faturas futuras.
+  automaticamente nas faturas futuras; **pagamento de fatura** debitando uma
+  conta, com saldo devedor real e selo de fatura paga.
+- **Transferências entre contas** (ex: Banco → Poupança) sem inflar os números
+  de receita/despesa do mês.
 - **Orçamento mensal por categoria** com barras de progresso e alerta de
   estouro.
 - **Metas de economia** com valor-alvo, prazo e histórico de aportes.
 - **Recorrentes**: contas fixas (aluguel, assinaturas, salário) lançadas
   automaticamente todo mês; pause e reative quando quiser.
 - **Categorias e contas** personalizáveis (nome, ícone, cor).
+- **Relatório anual**: KPIs do ano, fluxo de caixa de 12 meses e matriz de
+  despesas categoria × mês.
+- **Exportação CSV** (compatível com Excel) de todas as transações ou de um ano.
+- **Ajustes**: editar nome/e-mail e trocar a senha.
 
 ## Stack
 

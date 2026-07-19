@@ -56,6 +56,7 @@ export default async function TransactionsPage({
           type: tx.type,
           categoryId: tx.categoryId,
           accountId: tx.accountId,
+          toAccountId: tx.toAccountId,
           creditCardId: tx.creditCardId,
           installmentGroupId: tx.installmentGroupId,
           installmentNumber: tx.installmentNumber,

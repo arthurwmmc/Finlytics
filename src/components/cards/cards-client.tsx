@@ -1,9 +1,9 @@
 "use client";
 
 import { useActionState, useMemo, useState, useTransition } from "react";
-import { CreditCard, Pencil, Plus, Trash2 } from "lucide-react";
+import { BadgeCheck, CreditCard, HandCoins, Pencil, Plus, Trash2 } from "lucide-react";
 import { createCard, deleteCard, updateCard } from "@/lib/actions/cards";
-import type { ActionState } from "@/lib/actions/transactions";
+import { payInvoice, type ActionState } from "@/lib/actions/transactions";
 import { CARD_COLORS } from "@/lib/colors";
 import { formatBRL } from "@/lib/money";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -11,11 +11,12 @@ import { Modal } from "@/components/ui/modal";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { Input, Label, Select } from "@/components/ui/field";
-import type { CardDTO } from "@/lib/types";
+import type { AccountDTO, CardDTO } from "@/lib/types";
 
 export type InvoiceData = {
   card: CardDTO;
   total: number;
+  paid: number;
   used: number;
   periodStart: string;
   periodEnd: string;
@@ -161,9 +162,99 @@ function CardForm({
   );
 }
 
-export function CardsClient({ invoices }: { invoices: InvoiceData[] }) {
+function PayInvoiceForm({
+  invoice,
+  accounts,
+  onDone,
+}: {
+  invoice: InvoiceData;
+  accounts: AccountDTO[];
+  onDone: () => void;
+}) {
+  const wrapped = async (prev: ActionState, formData: FormData) => {
+    const result = await payInvoice(prev, formData);
+    if (result.ok) onDone();
+    return result;
+  };
+  const [state, formAction, pending] = useActionState<ActionState, FormData>(
+    wrapped,
+    {}
+  );
+  const remaining = Math.max(0, invoice.total - invoice.paid);
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+  return (
+    <form action={formAction} className="space-y-4">
+      <input type="hidden" name="creditCardId" value={invoice.card.id} />
+      <p className="text-sm text-muted">
+        Fatura de{" "}
+        <span className="text-foreground font-medium">{invoice.card.name}</span>{" "}
+        · vence {new Date(invoice.dueDate).toLocaleDateString("pt-BR")}
+      </p>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label htmlFor="pay-amount">Valor (R$)</Label>
+          <Input
+            id="pay-amount"
+            name="amount"
+            inputMode="decimal"
+            defaultValue={(remaining / 100).toFixed(2).replace(".", ",")}
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="pay-date">Data</Label>
+          <Input
+            id="pay-date"
+            name="date"
+            type="date"
+            defaultValue={todayStr}
+            required
+          />
+        </div>
+      </div>
+      <div>
+        <Label htmlFor="pay-account">Debitar da conta</Label>
+        <Select id="pay-account" name="accountId" required defaultValue={accounts[0]?.id ?? ""}>
+          {accounts.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </Select>
+      </div>
+      {state.error && (
+        <p className="text-sm text-expense bg-expense/10 border border-expense/20 rounded-xl px-4 py-2.5">
+          {state.error}
+        </p>
+      )}
+      <button
+        type="submit"
+        disabled={pending || accounts.length === 0}
+        className="btn-gradient w-full rounded-xl py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+      >
+        {pending ? "Registrando…" : "Registrar pagamento"}
+      </button>
+      {accounts.length === 0 && (
+        <p className="text-[11px] text-muted text-center">
+          Cadastre uma conta primeiro para pagar a fatura.
+        </p>
+      )}
+    </form>
+  );
+}
+
+export function CardsClient({
+  invoices,
+  accounts,
+}: {
+  invoices: InvoiceData[];
+  accounts: AccountDTO[];
+}) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<CardDTO | null>(null);
+  const [paying, setPaying] = useState<InvoiceData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
@@ -197,8 +288,10 @@ export function CardsClient({ invoices }: { invoices: InvoiceData[] }) {
         </GlassCard>
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          {invoices.map(({ card, total, used, dueDate, periodStart, periodEnd, transactions }) => {
+          {invoices.map((invoice) => {
+            const { card, total, paid, used, dueDate, periodStart, periodEnd, transactions } = invoice;
             const usedPercent = card.limit > 0 ? (used / card.limit) * 100 : 0;
+            const isPaid = total > 0 && paid >= total;
             return (
               <GlassCard key={card.id} className="space-y-4">
                 {/* topo estilo cartão físico */}
@@ -249,6 +342,16 @@ export function CardsClient({ invoices }: { invoices: InvoiceData[] }) {
                       <p className="font-[family-name:var(--font-space-grotesk)] text-2xl font-bold tabular">
                         {formatBRL(total)}
                       </p>
+                      {isPaid && (
+                        <span className="inline-flex items-center gap-1 mt-1 rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-medium">
+                          <BadgeCheck size={12} aria-hidden /> Fatura paga
+                        </span>
+                      )}
+                      {!isPaid && paid > 0 && (
+                        <span className="inline-flex items-center gap-1 mt-1 rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-medium tabular">
+                          {formatBRL(paid)} pagos
+                        </span>
+                      )}
                     </div>
                     <CreditCard size={26} className="opacity-70" aria-hidden />
                   </div>
@@ -265,14 +368,24 @@ export function CardsClient({ invoices }: { invoices: InvoiceData[] }) {
                   <ProgressBar percent={usedPercent} color={card.color} />
                 </div>
 
-                <p className="text-xs text-muted">
-                  Período{" "}
-                  {new Date(periodStart).toLocaleDateString("pt-BR")} –{" "}
-                  {new Date(
-                    new Date(periodEnd).getTime() - 86400000
-                  ).toLocaleDateString("pt-BR")}{" "}
-                  · vence em {new Date(dueDate).toLocaleDateString("pt-BR")}
-                </p>
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <p className="text-xs text-muted">
+                    Período{" "}
+                    {new Date(periodStart).toLocaleDateString("pt-BR")} –{" "}
+                    {new Date(
+                      new Date(periodEnd).getTime() - 86400000
+                    ).toLocaleDateString("pt-BR")}{" "}
+                    · vence em {new Date(dueDate).toLocaleDateString("pt-BR")}
+                  </p>
+                  {!isPaid && total > 0 && (
+                    <button
+                      onClick={() => setPaying(invoice)}
+                      className="rounded-xl border border-accent-cyan/30 bg-accent-cyan/10 text-accent-cyan px-3.5 py-1.5 text-xs font-medium inline-flex items-center gap-1.5 hover:bg-accent-cyan/20 transition"
+                    >
+                      <HandCoins size={14} /> Pagar fatura
+                    </button>
+                  )}
+                </div>
 
                 {transactions.length === 0 ? (
                   <p className="text-sm text-muted text-center py-4">
@@ -324,6 +437,21 @@ export function CardsClient({ invoices }: { invoices: InvoiceData[] }) {
           editing={editing}
           onDone={() => setModalOpen(false)}
         />
+      </Modal>
+
+      <Modal
+        open={paying !== null}
+        onClose={() => setPaying(null)}
+        title="Pagar fatura"
+      >
+        {paying && (
+          <PayInvoiceForm
+            key={paying.card.id}
+            invoice={paying}
+            accounts={accounts}
+            onDone={() => setPaying(null)}
+          />
+        )}
       </Modal>
     </>
   );

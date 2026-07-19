@@ -2,8 +2,8 @@ import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   currentYM,
+  getCardOutstanding,
   getInvoiceTotal,
-  invoicePeriod,
   openInvoiceYM,
 } from "@/lib/finance";
 import { MonthSelector } from "@/components/ui/month-selector";
@@ -19,16 +19,22 @@ export default async function CardsPage({
   const params = await searchParams;
   const explicitYM = /^\d{4}-\d{2}$/.test(params.m ?? "") ? params.m! : null;
 
-  const cards = await prisma.creditCard.findMany({
-    where: { userId: user.id },
-    orderBy: { name: "asc" },
-  });
+  const [cards, accounts] = await Promise.all([
+    prisma.creditCard.findMany({
+      where: { userId: user.id },
+      orderBy: { name: "asc" },
+    }),
+    prisma.account.findMany({
+      where: { userId: user.id },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
   const invoices: InvoiceData[] = await Promise.all(
     cards.map(async (card) => {
       // sem mês explícito, mostra a fatura aberta de cada cartão
       const ym = explicitYM ?? openInvoiceYM(card.closingDay);
-      const { total, start, end, dueDate } = await getInvoiceTotal(
+      const { total, paid, start, end, dueDate } = await getInvoiceTotal(
         user.id,
         card.id,
         ym,
@@ -39,29 +45,14 @@ export default async function CardsPage({
         where: {
           userId: user.id,
           creditCardId: card.id,
+          type: { in: ["EXPENSE", "INCOME"] },
           date: { gte: start, lt: end },
         },
         include: { category: true },
         orderBy: { date: "desc" },
       });
-      // comprometido = fatura atual em aberto + parcelas futuras
-      const { start: currentStart } = invoicePeriod(
-        currentYM(),
-        card.closingDay,
-        card.dueDay
-      );
-      const committed = await prisma.transaction.groupBy({
-        by: ["type"],
-        where: {
-          userId: user.id,
-          creditCardId: card.id,
-          date: { gte: currentStart },
-        },
-        _sum: { amount: true },
-      });
-      const used =
-        (committed.find((g) => g.type === "EXPENSE")?._sum.amount ?? 0) -
-        (committed.find((g) => g.type === "INCOME")?._sum.amount ?? 0);
+      // saldo devedor real: compras − estornos − pagamentos (todo o histórico)
+      const used = await getCardOutstanding(user.id, card.id);
 
       return {
         card: {
@@ -74,6 +65,7 @@ export default async function CardsPage({
           dueDay: card.dueDay,
         },
         total,
+        paid,
         used,
         periodStart: start.toISOString(),
         periodEnd: end.toISOString(),
@@ -84,9 +76,9 @@ export default async function CardsPage({
           amount: tx.amount,
           type: tx.type,
           date: tx.date.toISOString(),
-          categoryName: tx.category.name,
-          categoryIcon: tx.category.icon,
-          categoryColor: tx.category.color,
+          categoryName: tx.category?.name ?? "—",
+          categoryIcon: tx.category?.icon ?? "💳",
+          categoryColor: tx.category?.color ?? "#8b93a7",
         })),
       };
     })
@@ -105,7 +97,7 @@ export default async function CardsPage({
         </div>
         <MonthSelector ym={explicitYM ?? currentYM()} basePath="/cards" />
       </div>
-      <CardsClient invoices={invoices} />
+      <CardsClient invoices={invoices} accounts={accounts} />
     </div>
   );
 }
