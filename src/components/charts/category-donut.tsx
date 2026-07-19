@@ -1,6 +1,6 @@
 "use client";
 
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { Cell, Pie, PieChart, Tooltip } from "recharts";
 import { formatBRL } from "@/lib/money";
 import { GlassTooltip } from "./chart-tooltip";
 
@@ -31,11 +31,10 @@ export function CategoryDonut({ data }: { data: Slice[] }) {
   const total = data.reduce((sum, s) => sum + s.total, 0);
 
   return (
-    <div className="flex flex-col sm:flex-row items-center gap-4">
+    <div className="flex flex-col items-center gap-4">
       <div className="relative w-44 h-44 shrink-0">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
+        <PieChart width={176} height={176}>
+          <Pie
               data={slices}
               dataKey="total"
               nameKey="name"
@@ -47,10 +46,9 @@ export function CategoryDonut({ data }: { data: Slice[] }) {
               {slices.map((slice) => (
                 <Cell key={slice.name} fill={slice.color} />
               ))}
-            </Pie>
-            <Tooltip content={<GlassTooltip />} />
-          </PieChart>
-        </ResponsiveContainer>
+          </Pie>
+          <Tooltip content={<GlassTooltip />} />
+        </PieChart>
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           <span className="text-[10px] text-muted uppercase tracking-wider">
             Total
@@ -60,7 +58,7 @@ export function CategoryDonut({ data }: { data: Slice[] }) {
           </span>
         </div>
       </div>
-      <ul className="flex-1 w-full space-y-2 text-sm">
+      <ul className="flex-1 w-full min-w-0 space-y-2 text-sm">
         {slices.map((slice) => (
           <li key={slice.name} className="flex items-center gap-2.5">
             <span
@@ -68,13 +66,13 @@ export function CategoryDonut({ data }: { data: Slice[] }) {
               style={{ background: slice.color }}
               aria-hidden
             />
-            <span className="text-foreground/85 truncate">
+            <span className="text-foreground/85 truncate min-w-0 flex-1">
               {slice.icon} {slice.name}
             </span>
-            <span className="ml-auto tabular text-muted">
+            <span className="ml-auto tabular text-muted shrink-0">
               {formatBRL(slice.total)}
             </span>
-            <span className="tabular text-xs text-muted/70 w-10 text-right">
+            <span className="tabular text-xs text-muted/70 w-8 text-right shrink-0">
               {total > 0 ? Math.round((slice.total / total) * 100) : 0}%
             </span>
           </li>

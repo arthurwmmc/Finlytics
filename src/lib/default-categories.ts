@@ -9,7 +9,8 @@ export const DEFAULT_CATEGORIES: {
   icon: string;
   color: string;
 }[] = [
-  // Despesas
+  // Despesas — cores distribuídas para minimizar repetição entre categorias
+  // que costumam aparecer juntas no donut
   { name: "Alimentação", type: "EXPENSE", icon: "🍔", color: c[5] },
   { name: "Mercado", type: "EXPENSE", icon: "🛒", color: c[1] },
   { name: "Moradia", type: "EXPENSE", icon: "🏠", color: c[0] },
@@ -18,10 +19,10 @@ export const DEFAULT_CATEGORIES: {
   { name: "Lazer", type: "EXPENSE", icon: "🎮", color: c[6] },
   { name: "Educação", type: "EXPENSE", icon: "📚", color: c[4] },
   { name: "Assinaturas", type: "EXPENSE", icon: "📺", color: c[2] },
-  { name: "Compras", type: "EXPENSE", icon: "🛍️", color: c[2] },
-  { name: "Viagem", type: "EXPENSE", icon: "✈️", color: c[0] },
+  { name: "Compras", type: "EXPENSE", icon: "🛍️", color: c[4] },
+  { name: "Viagem", type: "EXPENSE", icon: "✈️", color: c[6] },
   { name: "Pets", type: "EXPENSE", icon: "🐾", color: c[3] },
-  { name: "Outros", type: "EXPENSE", icon: "📦", color: c[5] },
+  { name: "Outros", type: "EXPENSE", icon: "📦", color: "#8b93a7" },
   // Receitas
   { name: "Salário", type: "INCOME", icon: "💼", color: c[4] },
   { name: "Freelance", type: "INCOME", icon: "💻", color: c[0] },

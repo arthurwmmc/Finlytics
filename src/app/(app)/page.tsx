@@ -21,6 +21,7 @@ import {
   getInvoiceTotal,
   getMonthlySummary,
   monthRange,
+  openInvoiceYM,
   shiftYM,
 } from "@/lib/finance";
 import { formatBRL } from "@/lib/money";
@@ -45,7 +46,8 @@ export default async function DashboardPage({
 }) {
   const user = await requireUser();
   const params = await searchParams;
-  const ym = /^\d{4}-\d{2}$/.test(params.m ?? "") ? params.m! : currentYM();
+  const hasExplicitYM = /^\d{4}-\d{2}$/.test(params.m ?? "");
+  const ym = hasExplicitYM ? params.m! : currentYM();
 
   const [
     summary,
@@ -87,10 +89,11 @@ export default async function DashboardPage({
   const invoices = await Promise.all(
     cards.map(async (card) => ({
       card,
+      // sem mês explícito, mostra a fatura aberta de cada cartão
       invoice: await getInvoiceTotal(
         user.id,
         card.id,
-        ym,
+        hasExplicitYM ? ym : openInvoiceYM(card.closingDay),
         card.closingDay,
         card.dueDay
       ),

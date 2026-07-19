@@ -19,10 +19,11 @@ export function shiftYM(ym: string, delta: number): string {
 
 export function ymLabel(ym: string): string {
   const [y, m] = ym.split("-").map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString("pt-BR", {
+  const label = new Date(y, m - 1, 1).toLocaleDateString("pt-BR", {
     month: "long",
     year: "numeric",
   });
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
 /** Dia clampado para não estourar o fim do mês (ex: dia 31 em fevereiro). */
@@ -161,6 +162,15 @@ export async function getBalanceSeries(userId: string, ym: string, months = 6) {
     });
   }
   return series;
+}
+
+/**
+ * Mês de referência da fatura ABERTA de um cartão: se o fechamento deste mês
+ * já passou, a fatura aberta é a do mês seguinte.
+ */
+export function openInvoiceYM(closingDay: number, today = new Date()): string {
+  const ym = currentYM(today);
+  return today.getDate() > closingDay ? shiftYM(ym, 1) : ym;
 }
 
 /**

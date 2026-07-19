@@ -23,7 +23,7 @@ export function MonthSelector({
       >
         <ChevronLeft size={16} />
       </Link>
-      <span className="text-sm font-medium capitalize min-w-36 text-center">
+      <span className="text-sm font-medium min-w-36 text-center">
         {ymLabel(ym)}
       </span>
       <Link

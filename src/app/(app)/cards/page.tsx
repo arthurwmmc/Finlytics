@@ -1,6 +1,11 @@
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { currentYM, getInvoiceTotal, invoicePeriod } from "@/lib/finance";
+import {
+  currentYM,
+  getInvoiceTotal,
+  invoicePeriod,
+  openInvoiceYM,
+} from "@/lib/finance";
 import { MonthSelector } from "@/components/ui/month-selector";
 import { CardsClient } from "@/components/cards/cards-client";
 import type { InvoiceData } from "@/components/cards/cards-client";
@@ -12,7 +17,7 @@ export default async function CardsPage({
 }) {
   const user = await requireUser();
   const params = await searchParams;
-  const ym = /^\d{4}-\d{2}$/.test(params.m ?? "") ? params.m! : currentYM();
+  const explicitYM = /^\d{4}-\d{2}$/.test(params.m ?? "") ? params.m! : null;
 
   const cards = await prisma.creditCard.findMany({
     where: { userId: user.id },
@@ -21,6 +26,8 @@ export default async function CardsPage({
 
   const invoices: InvoiceData[] = await Promise.all(
     cards.map(async (card) => {
+      // sem mês explícito, mostra a fatura aberta de cada cartão
+      const ym = explicitYM ?? openInvoiceYM(card.closingDay);
       const { total, start, end, dueDate } = await getInvoiceTotal(
         user.id,
         card.id,
@@ -96,7 +103,7 @@ export default async function CardsPage({
             Faturas, limites e parcelamentos.
           </p>
         </div>
-        <MonthSelector ym={ym} basePath="/cards" />
+        <MonthSelector ym={explicitYM ?? currentYM()} basePath="/cards" />
       </div>
       <CardsClient invoices={invoices} />
     </div>

@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Nébula — Dashboard de Finanças Pessoais
 
-## Getting Started
+Dashboard de finanças pessoais com visual futurista em glassmorphism: gráficos,
+indicadores, orçamentos, metas, cartões de crédito com faturas e parcelamentos,
+despesas recorrentes e **múltiplos usuários com dados 100% isolados** (cada
+pessoa cria sua conta com e-mail e senha e vê apenas os próprios dados).
 
-First, run the development server:
+## Funcionalidades
+
+- **Dashboard**: saldo total, receitas/despesas/economia do mês com variação vs
+  mês anterior, fluxo de caixa dos últimos 6 meses, despesas por categoria,
+  evolução do saldo, orçamentos, metas, faturas e últimas transações.
+- **Transações**: receitas e despesas com categoria, conta ou cartão, filtros
+  por tipo/categoria/conta/busca e navegação por mês.
+- **Cartões de crédito**: limite, fechamento e vencimento; fatura calculada por
+  período com navegação mês a mês; **compras parceladas** (até 24x) lançadas
+  automaticamente nas faturas futuras.
+- **Orçamento mensal por categoria** com barras de progresso e alerta de
+  estouro.
+- **Metas de economia** com valor-alvo, prazo e histórico de aportes.
+- **Recorrentes**: contas fixas (aluguel, assinaturas, salário) lançadas
+  automaticamente todo mês; pause e reative quando quiser.
+- **Categorias e contas** personalizáveis (nome, ícone, cor).
+
+## Stack
+
+Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Prisma + SQLite ·
+Recharts · autenticação própria com sessão JWT em cookie httpOnly (bcrypt +
+jose).
+
+## Como rodar
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env      # edite AUTH_SECRET para um valor forte
+npx prisma migrate dev    # cria o banco SQLite (prisma/dev.db)
+npm run dev               # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Crie sua conta em `/register`. Sua noiva cria a dela no mesmo endereço — os
+dados são completamente separados por usuário.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Dados de demonstração (opcional)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run db:seed
+# login: demo@nebula.app · senha: demo1234
+```
 
-## Learn More
+## Produção
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run build && npm start
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+O banco é um arquivo SQLite local (`prisma/dev.db`), ideal para rodar em um
+servidor próprio/VPS (faça backup do arquivo!). Para hospedar em plataformas
+serverless como a Vercel, troque o datasource do Prisma por Postgres ou Turso,
+pois o sistema de arquivos lá é efêmero.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Estrutura
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+src/
+  lib/            # auth, dinheiro (centavos), cálculos financeiros, actions
+  app/(auth)/     # login e registro
+  app/(app)/      # páginas autenticadas (dashboard, transações, …)
+  components/     # ui base (vidro), gráficos, formulários
+prisma/           # schema, migrações e seed
+```
