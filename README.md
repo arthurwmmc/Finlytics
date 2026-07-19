@@ -31,21 +31,46 @@ pessoa cria sua conta com e-mail e senha e vê apenas os próprios dados).
 
 ## Stack
 
-Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Prisma + SQLite ·
-Recharts · autenticação própria com sessão JWT em cookie httpOnly (bcrypt +
-jose).
+Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Prisma + PostgreSQL
+(Supabase) · Recharts · autenticação própria com sessão JWT em cookie httpOnly
+(bcrypt + jose).
 
-## Como rodar
+## Deploy: Vercel + Supabase (grátis)
+
+### 1. Banco no Supabase
+
+1. Crie um projeto em [supabase.com](https://supabase.com) (anote a senha do
+   banco).
+2. Em **Project Settings → Database → Connection string**, copie as duas URLs:
+   - **Transaction pooler** (porta `6543`) → será o `DATABASE_URL` — adicione
+     `?pgbouncer=true` no final;
+   - **Session/Direct** (porta `5432`) → será o `DIRECT_URL`.
+
+### 2. App na Vercel
+
+1. Em [vercel.com](https://vercel.com), **Add New → Project** e importe este
+   repositório do GitHub (framework Next.js é detectado sozinho).
+2. Em **Environment Variables**, defina:
+   - `DATABASE_URL` — a URL do pooler (com `?pgbouncer=true`);
+   - `DIRECT_URL` — a URL direta;
+   - `AUTH_SECRET` — um segredo longo e aleatório (`openssl rand -base64 32`).
+3. **Deploy.** O build já roda `prisma migrate deploy`, criando as tabelas no
+   Supabase automaticamente.
+
+Pronto: acesse a URL da Vercel, crie sua conta em `/register` e sua noiva cria
+a dela no mesmo endereço — os dados são completamente isolados por usuário.
+
+## Rodar localmente
+
+Precisa de um Postgres — pode ser o próprio Supabase (use as mesmas URLs no
+`.env`) ou um Postgres local:
 
 ```bash
 npm install
-cp .env.example .env      # edite AUTH_SECRET para um valor forte
-npx prisma migrate dev    # cria o banco SQLite (prisma/dev.db)
+cp .env.example .env      # preencha DATABASE_URL, DIRECT_URL e AUTH_SECRET
+npx prisma migrate dev    # aplica as migrações
 npm run dev               # http://localhost:3000
 ```
-
-Crie sua conta em `/register`. Sua noiva cria a dela no mesmo endereço — os
-dados são completamente separados por usuário.
 
 ### Dados de demonstração (opcional)
 
@@ -53,17 +78,6 @@ dados são completamente separados por usuário.
 npm run db:seed
 # login: demo@nebula.app · senha: demo1234
 ```
-
-## Produção
-
-```bash
-npm run build && npm start
-```
-
-O banco é um arquivo SQLite local (`prisma/dev.db`), ideal para rodar em um
-servidor próprio/VPS (faça backup do arquivo!). Para hospedar em plataformas
-serverless como a Vercel, troque o datasource do Prisma por Postgres ou Turso,
-pois o sistema de arquivos lá é efêmero.
 
 ## Estrutura
 
