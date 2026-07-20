@@ -70,7 +70,7 @@ export function Sidebar() {
           ))}
         </nav>
         <p className="mt-auto px-3 pt-3 text-[10px] text-muted/60">
-          Feito com Next.js · dados locais
+          Finlytics · v1.0
         </p>
       </aside>
 

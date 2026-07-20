@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import Link from "next/link";
 import { login, type AuthState } from "@/lib/actions/auth";
 import { Input, Label } from "@/components/ui/field";
+import { PasswordInput } from "@/components/ui/password-input";
 
 export default function LoginPage() {
   const [state, action, pending] = useActionState<AuthState, FormData>(login, {});
@@ -25,10 +26,9 @@ export default function LoginPage() {
         </div>
         <div>
           <Label htmlFor="password">Senha</Label>
-          <Input
+          <PasswordInput
             id="password"
             name="password"
-            type="password"
             autoComplete="current-password"
             placeholder="••••••••"
             required

@@ -1,7 +1,9 @@
 import { SelectHTMLAttributes, InputHTMLAttributes, TextareaHTMLAttributes } from "react";
 
-const baseClass =
+export const inputBaseClass =
   "w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-foreground placeholder:text-muted/70 outline-none transition focus:border-accent-cyan/50 focus:bg-white/8 focus:ring-2 focus:ring-accent-cyan/20";
+
+const baseClass = inputBaseClass;
 
 export function Input({
   className = "",

@@ -5,6 +5,7 @@ import { changePassword, updateProfile } from "@/lib/actions/profile";
 import type { ActionState } from "@/lib/actions/transactions";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Input, Label } from "@/components/ui/field";
+import { PasswordInput } from "@/components/ui/password-input";
 
 function Feedback({ state, success }: { state: ActionState; success: string }) {
   if (state.error)
@@ -79,20 +80,18 @@ export function SettingsClient({
         <form ref={passwordFormRef} action={handlePassword} className="space-y-4">
           <div>
             <Label htmlFor="pw-current">Senha atual</Label>
-            <Input
+            <PasswordInput
               id="pw-current"
               name="current"
-              type="password"
               autoComplete="current-password"
               required
             />
           </div>
           <div>
             <Label htmlFor="pw-new">Nova senha</Label>
-            <Input
+            <PasswordInput
               id="pw-new"
               name="password"
-              type="password"
               autoComplete="new-password"
               minLength={6}
               placeholder="Mínimo de 6 caracteres"
@@ -101,10 +100,9 @@ export function SettingsClient({
           </div>
           <div>
             <Label htmlFor="pw-confirm">Confirmar nova senha</Label>
-            <Input
+            <PasswordInput
               id="pw-confirm"
               name="confirm"
-              type="password"
               autoComplete="new-password"
               required
             />
