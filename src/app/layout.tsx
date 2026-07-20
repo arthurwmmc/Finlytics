@@ -13,7 +13,7 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Nébula — Finanças Pessoais",
+  title: "Finlytics — Finanças Pessoais",
   description:
     "Dashboard de finanças pessoais: transações, orçamentos, metas, cartões e gráficos.",
 };

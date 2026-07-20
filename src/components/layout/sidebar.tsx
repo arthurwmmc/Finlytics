@@ -47,7 +47,7 @@ export function Sidebar() {
       <aside className="hidden md:flex flex-col glass rounded-3xl m-4 mr-0 p-4 w-56 shrink-0 sticky top-4 h-[calc(100vh-2rem)]">
         <Link href="/" className="px-3 pt-1 pb-5 block">
           <span className="font-[family-name:var(--font-space-grotesk)] text-2xl font-bold text-gradient">
-            Nébula
+            Finlytics
           </span>
         </Link>
         <nav

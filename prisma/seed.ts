@@ -1,5 +1,5 @@
 /**
- * Dados de demonstração: cria o usuário demo@nebula.app (senha: demo1234)
+ * Dados de demonstração: cria o usuário demo@finlytics.app (senha: demo1234)
  * com 6 meses de movimentações para preencher os gráficos.
  *
  * Rodar com: npm run db:seed
@@ -16,7 +16,7 @@ function day(monthsAgo: number, dayOfMonth: number): Date {
 }
 
 async function main() {
-  const email = "demo@nebula.app";
+  const email = "demo@finlytics.app";
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     console.log("Usuário demo já existe — nada a fazer.");
@@ -62,7 +62,7 @@ async function main() {
 
   const card = await prisma.creditCard.create({
     data: {
-      name: "Cartão Nébula",
+      name: "Cartão Finlytics",
       brand: "MASTERCARD",
       color: "#7c3aed",
       limit: 800000,
@@ -167,7 +167,7 @@ async function main() {
     ],
   });
 
-  console.log("✅ Dados demo criados — login: demo@nebula.app / senha: demo1234");
+  console.log("✅ Dados demo criados — login: demo@finlytics.app / senha: demo1234");
 }
 
 main()

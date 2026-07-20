@@ -6,10 +6,10 @@ export default function AuthLayout({
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="font-[family-name:var(--font-space-grotesk)] text-4xl font-bold text-gradient">
-            Nébula
+            Finlytics
           </h1>
           <p className="text-muted mt-2 text-sm">
-            Suas finanças pessoais, em órbita.
+            Inteligência para as suas finanças.
           </p>
         </div>
         {children}

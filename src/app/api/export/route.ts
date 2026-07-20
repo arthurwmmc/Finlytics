@@ -62,8 +62,8 @@ export async function GET(request: NextRequest) {
   // BOM para o Excel reconhecer UTF-8
   const csv = "\uFEFF" + [header, ...lines].join("\r\n");
   const filename = year
-    ? `nebula-transacoes-${year}.csv`
-    : "nebula-transacoes.csv";
+    ? `finlytics-transacoes-${year}.csv`
+    : "finlytics-transacoes.csv";
 
   return new Response(csv, {
     headers: {

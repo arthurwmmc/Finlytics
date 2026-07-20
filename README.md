@@ -1,4 +1,4 @@
-# Nébula — Dashboard de Finanças Pessoais
+# Finlytics — Dashboard de Finanças Pessoais
 
 Dashboard de finanças pessoais com visual futurista em glassmorphism: gráficos,
 indicadores, orçamentos, metas, cartões de crédito com faturas e parcelamentos,
@@ -76,7 +76,7 @@ npm run dev               # http://localhost:3000
 
 ```bash
 npm run db:seed
-# login: demo@nebula.app · senha: demo1234
+# login: demo@finlytics.app · senha: demo1234
 ```
 
 ## Estrutura
