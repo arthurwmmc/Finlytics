@@ -87,38 +87,37 @@ export async function getCashflowSeries(
   ym: string,
   months = 6
 ) {
-  const result: { ym: string; label: string; income: number; expense: number }[] =
-    [];
-  for (let i = months - 1; i >= 0; i--) {
-    const target = shiftYM(ym, -i);
-    const { income, expense } = await getMonthlySummary(userId, target);
+  const targets: string[] = [];
+  for (let i = months - 1; i >= 0; i--) targets.push(shiftYM(ym, -i));
+  // dispara todos os meses em paralelo (evita N idas sequenciais ao banco)
+  const summaries = await Promise.all(
+    targets.map((target) => getMonthlySummary(userId, target))
+  );
+  return targets.map((target, idx) => {
     const [y, m] = target.split("-").map(Number);
-    result.push({
+    return {
       ym: target,
       label: new Date(y, m - 1, 1)
         .toLocaleDateString("pt-BR", { month: "short" })
         .replace(".", ""),
-      income,
-      expense,
-    });
-  }
-  return result;
+      income: summaries[idx].income,
+      expense: summaries[idx].expense,
+    };
+  });
 }
 
 /** Despesas do mês agrupadas por categoria, ordenadas da maior para a menor. */
 export async function getExpensesByCategory(userId: string, ym: string) {
   const { start, end } = monthRange(ym);
-  const grouped = await prisma.transaction.groupBy({
-    by: ["categoryId"],
-    where: { userId, type: "EXPENSE", date: { gte: start, lt: end } },
-    _sum: { amount: true },
-  });
-  const categories = await prisma.category.findMany({
-    where: {
-      userId,
-      id: { in: grouped.flatMap((g) => (g.categoryId ? [g.categoryId] : [])) },
-    },
-  });
+  // groupBy e a lista de categorias em paralelo (a lista do usuário é pequena)
+  const [grouped, categories] = await Promise.all([
+    prisma.transaction.groupBy({
+      by: ["categoryId"],
+      where: { userId, type: "EXPENSE", date: { gte: start, lt: end } },
+      _sum: { amount: true },
+    }),
+    prisma.category.findMany({ where: { userId } }),
+  ]);
   return grouped
     .map((g) => {
       const category = categories.find((c) => c.id === g.categoryId);
@@ -153,43 +152,51 @@ function netFromGroups(
 }
 
 export async function getBalanceSeries(userId: string, ym: string, months = 6) {
-  const accounts = await prisma.account.findMany({ where: { userId } });
-  const initialTotal = accounts.reduce((sum, a) => sum + a.initialBalance, 0);
-
   const firstYM = shiftYM(ym, -(months - 1));
   const { start: firstStart } = monthRange(firstYM);
 
-  const before = await prisma.transaction.groupBy({
-    by: ["type"],
-    where: { userId, accountId: { not: null }, date: { lt: firstStart } },
-    _sum: { amount: true },
-  });
+  const targets: string[] = [];
+  for (let i = months - 1; i >= 0; i--) targets.push(shiftYM(ym, -i));
+
+  // contas, saldo anterior ao período e os N meses — tudo em paralelo
+  const [accounts, before, monthly] = await Promise.all([
+    prisma.account.findMany({ where: { userId } }),
+    prisma.transaction.groupBy({
+      by: ["type"],
+      where: { userId, accountId: { not: null }, date: { lt: firstStart } },
+      _sum: { amount: true },
+    }),
+    Promise.all(
+      targets.map((target) => {
+        const { start, end } = monthRange(target);
+        return prisma.transaction.groupBy({
+          by: ["type"],
+          where: {
+            userId,
+            accountId: { not: null },
+            date: { gte: start, lt: end },
+          },
+          _sum: { amount: true },
+        });
+      })
+    ),
+  ]);
+
+  const initialTotal = accounts.reduce((sum, a) => sum + a.initialBalance, 0);
   let running = initialTotal + netFromGroups(before);
 
-  const series: { ym: string; label: string; balance: number }[] = [];
-  for (let i = months - 1; i >= 0; i--) {
-    const target = shiftYM(ym, -i);
-    const { start, end } = monthRange(target);
-    const grouped = await prisma.transaction.groupBy({
-      by: ["type"],
-      where: {
-        userId,
-        accountId: { not: null },
-        date: { gte: start, lt: end },
-      },
-      _sum: { amount: true },
-    });
-    running += netFromGroups(grouped);
+  // acumula em ordem cronológica (targets já estão do mais antigo ao atual)
+  return targets.map((target, idx) => {
+    running += netFromGroups(monthly[idx]);
     const [y, m] = target.split("-").map(Number);
-    series.push({
+    return {
       ym: target,
       label: new Date(y, m - 1, 1)
         .toLocaleDateString("pt-BR", { month: "short" })
         .replace(".", ""),
       balance: running,
-    });
-  }
-  return series;
+    };
+  });
 }
 
 /**
