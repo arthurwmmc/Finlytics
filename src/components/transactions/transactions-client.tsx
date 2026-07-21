@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import {
   ArrowRight,
   CreditCard,
@@ -35,19 +36,41 @@ export function TransactionsClient({
   categories,
   accounts,
   cards,
+  initialQuery = "",
+  searching = false,
 }: {
   transactions: TransactionDTO[];
   categories: CategoryDTO[];
   accounts: AccountDTO[];
   cards: CardDTO[];
+  initialQuery?: string;
+  searching?: boolean;
 }) {
-  const [query, setQuery] = useState("");
+  const router = useRouter();
+  const pathname = usePathname();
+  const [query, setQuery] = useState(initialQuery);
   const [typeFilter, setTypeFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<TransactionDTO | null>(null);
   const [, startTransition] = useTransition();
+
+  // sincroniza a busca com a URL (debounce) para varrer todos os meses no servidor
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      const q = query.trim();
+      router.replace(q ? `${pathname}?q=${encodeURIComponent(q)}` : pathname, {
+        scroll: false,
+      });
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [query, pathname, router]);
 
   const categoryById = useMemo(
     () => new Map(categories.map((c) => [c.id, c])),
@@ -121,7 +144,7 @@ export function TransactionsClient({
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar por descrição…"
+              placeholder="Buscar em todos os meses…"
               className="pl-10"
               aria-label="Buscar transações"
             />
@@ -191,6 +214,9 @@ export function TransactionsClient({
       <div className="flex flex-wrap gap-3 text-sm">
         <span className="glass rounded-full px-4 py-1.5">
           {filtered.length} transaç{filtered.length === 1 ? "ão" : "ões"}
+          {searching && (
+            <span className="text-accent-cyan"> · todos os meses</span>
+          )}
         </span>
         <span className="glass rounded-full px-4 py-1.5 text-income tabular">
           +{formatBRL(totals.income)}

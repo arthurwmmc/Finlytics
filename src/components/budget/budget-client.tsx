@@ -10,6 +10,7 @@ import { Modal } from "@/components/ui/modal";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input, Label } from "@/components/ui/field";
+import { MoneyInput } from "@/components/ui/money-input";
 
 type BudgetItem = {
   id: string;
@@ -44,16 +45,13 @@ function BudgetForm({
         {item.icon} <span className="text-foreground">{item.name}</span>
       </p>
       <div>
-        <Label htmlFor="budget-value">Limite mensal (R$)</Label>
-        <Input
+        <Label htmlFor="budget-value">Limite mensal</Label>
+        <MoneyInput
           id="budget-value"
           name="monthlyBudget"
-          inputMode="decimal"
           placeholder="Deixe vazio para remover o limite"
           defaultValue={
-            item.monthlyBudget
-              ? (item.monthlyBudget / 100).toFixed(2).replace(".", ",")
-              : ""
+            item.monthlyBudget ? String(item.monthlyBudget) : undefined
           }
           autoFocus
         />

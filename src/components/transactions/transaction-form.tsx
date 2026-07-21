@@ -9,6 +9,7 @@ import {
   type ActionState,
 } from "@/lib/actions/transactions";
 import { Input, Label, Select } from "@/components/ui/field";
+import { MoneyInput } from "@/components/ui/money-input";
 import type {
   AccountDTO,
   CardDTO,
@@ -137,15 +138,12 @@ export function TransactionForm({
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <Label htmlFor="tx-amount">Valor (R$)</Label>
-          <Input
+          <Label htmlFor="tx-amount">Valor</Label>
+          <MoneyInput
             id="tx-amount"
             name="amount"
-            inputMode="decimal"
             placeholder="0,00"
-            defaultValue={
-              editing ? (editing.amount / 100).toFixed(2).replace(".", ",") : ""
-            }
+            defaultValue={editing ? String(editing.amount) : undefined}
             required
           />
         </div>

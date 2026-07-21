@@ -14,6 +14,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Modal } from "@/components/ui/modal";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input, Label, Select } from "@/components/ui/field";
+import { MoneyInput } from "@/components/ui/money-input";
 import type { AccountDTO, CardDTO, CategoryDTO } from "@/lib/types";
 
 type RuleItem = {
@@ -111,15 +112,12 @@ function RuleForm({
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <Label htmlFor="rule-amount">Valor (R$)</Label>
-          <Input
+          <Label htmlFor="rule-amount">Valor</Label>
+          <MoneyInput
             id="rule-amount"
             name="amount"
-            inputMode="decimal"
             placeholder="0,00"
-            defaultValue={
-              editing ? (editing.amount / 100).toFixed(2).replace(".", ",") : ""
-            }
+            defaultValue={editing ? String(editing.amount) : undefined}
             required
           />
         </div>

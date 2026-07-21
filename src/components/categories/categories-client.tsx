@@ -14,6 +14,8 @@ import { Modal } from "@/components/ui/modal";
 import { GlassCard } from "@/components/ui/glass-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input, Label } from "@/components/ui/field";
+import { MoneyInput } from "@/components/ui/money-input";
+import { ColorPicker } from "@/components/ui/color-picker";
 
 type CategoryItem = {
   id: string;
@@ -41,7 +43,6 @@ function CategoryForm({
 }) {
   const [type, setType] = useState<string>(editing?.type ?? defaultType);
   const [icon, setIcon] = useState(editing?.icon ?? "🏷️");
-  const [color, setColor] = useState(editing?.color ?? CATEGORY_COLORS[0]);
 
   const action = useMemo(
     () => (editing ? updateCategory.bind(null, editing.id) : createCategory),
@@ -120,39 +121,22 @@ function CategoryForm({
 
       <div>
         <Label>Cor</Label>
-        <div className="flex gap-2 flex-wrap" role="radiogroup" aria-label="Cor">
-          {CATEGORY_COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              role="radio"
-              aria-checked={color === c}
-              aria-label={`Cor ${c}`}
-              onClick={() => setColor(c)}
-              className={`size-8 rounded-full transition ${
-                color === c
-                  ? "ring-2 ring-white ring-offset-2 ring-offset-[#111827]"
-                  : "opacity-70 hover:opacity-100"
-              }`}
-              style={{ background: c }}
-            />
-          ))}
-        </div>
-        <input type="hidden" name="color" value={color} />
+        <ColorPicker
+          name="color"
+          presets={CATEGORY_COLORS}
+          defaultValue={editing?.color}
+        />
       </div>
 
       {type === "EXPENSE" && (
         <div>
-          <Label htmlFor="cat-budget">Orçamento mensal (R$) — opcional</Label>
-          <Input
+          <Label htmlFor="cat-budget">Orçamento mensal — opcional</Label>
+          <MoneyInput
             id="cat-budget"
             name="monthlyBudget"
-            inputMode="decimal"
             placeholder="Sem limite"
             defaultValue={
-              editing?.monthlyBudget
-                ? (editing.monthlyBudget / 100).toFixed(2).replace(".", ",")
-                : ""
+              editing?.monthlyBudget ? String(editing.monthlyBudget) : undefined
             }
           />
         </div>

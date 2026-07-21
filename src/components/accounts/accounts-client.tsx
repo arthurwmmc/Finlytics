@@ -15,6 +15,7 @@ import { Modal } from "@/components/ui/modal";
 import { EmptyState } from "@/components/ui/empty-state";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Input, Label, Select } from "@/components/ui/field";
+import { ColorPicker } from "@/components/ui/color-picker";
 
 type AccountWithBalance = {
   id: string;
@@ -31,37 +32,6 @@ const TYPE_LABELS: Record<string, string> = {
   CASH: "Dinheiro",
   INVESTMENT: "Investimentos",
 };
-
-function ColorPicker({
-  name,
-  defaultValue,
-}: {
-  name: string;
-  defaultValue: string;
-}) {
-  const [selected, setSelected] = useState(defaultValue);
-  return (
-    <div className="flex gap-2 flex-wrap" role="radiogroup" aria-label="Cor">
-      {ACCOUNT_COLORS.map((color) => (
-        <button
-          key={color}
-          type="button"
-          role="radio"
-          aria-checked={selected === color}
-          aria-label={`Cor ${color}`}
-          onClick={() => setSelected(color)}
-          className={`size-8 rounded-full transition ${
-            selected === color
-              ? "ring-2 ring-white ring-offset-2 ring-offset-[#111827]"
-              : "opacity-70 hover:opacity-100"
-          }`}
-          style={{ background: color }}
-        />
-      ))}
-      <input type="hidden" name={name} value={selected} />
-    </div>
-  );
-}
 
 function AccountForm({
   editing,
@@ -128,7 +98,11 @@ function AccountForm({
       </div>
       <div>
         <Label>Cor</Label>
-        <ColorPicker name="color" defaultValue={editing?.color ?? ACCOUNT_COLORS[0]} />
+        <ColorPicker
+          name="color"
+          presets={ACCOUNT_COLORS}
+          defaultValue={editing?.color}
+        />
       </div>
       {state.error && (
         <p className="text-sm text-expense bg-expense/10 border border-expense/20 rounded-xl px-4 py-2.5">

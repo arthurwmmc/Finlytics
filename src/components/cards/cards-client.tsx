@@ -11,6 +11,8 @@ import { Modal } from "@/components/ui/modal";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { Input, Label, Select } from "@/components/ui/field";
+import { MoneyInput } from "@/components/ui/money-input";
+import { ColorPicker } from "@/components/ui/color-picker";
 import type { AccountDTO, CardDTO } from "@/lib/types";
 
 export type InvoiceData = {
@@ -42,7 +44,6 @@ function CardForm({
   editing: CardDTO | null;
   onDone: () => void;
 }) {
-  const [color, setColor] = useState(editing?.color ?? CARD_COLORS[0]);
   const action = useMemo(
     () => (editing ? updateCard.bind(null, editing.id) : createCard),
     [editing]
@@ -85,15 +86,12 @@ function CardForm({
           </Select>
         </div>
         <div>
-          <Label htmlFor="card-limit">Limite (R$)</Label>
-          <Input
+          <Label htmlFor="card-limit">Limite</Label>
+          <MoneyInput
             id="card-limit"
             name="limit"
-            inputMode="decimal"
             placeholder="0,00"
-            defaultValue={
-              editing ? (editing.limit / 100).toFixed(2).replace(".", ",") : ""
-            }
+            defaultValue={editing ? String(editing.limit) : undefined}
             required
           />
         </div>
@@ -126,25 +124,11 @@ function CardForm({
       </div>
       <div>
         <Label>Cor</Label>
-        <div className="flex gap-2 flex-wrap" role="radiogroup" aria-label="Cor">
-          {CARD_COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              role="radio"
-              aria-checked={color === c}
-              aria-label={`Cor ${c}`}
-              onClick={() => setColor(c)}
-              className={`size-8 rounded-full transition ${
-                color === c
-                  ? "ring-2 ring-white ring-offset-2 ring-offset-[#111827]"
-                  : "opacity-70 hover:opacity-100"
-              }`}
-              style={{ background: c }}
-            />
-          ))}
-        </div>
-        <input type="hidden" name="color" value={color} />
+        <ColorPicker
+          name="color"
+          presets={CARD_COLORS}
+          defaultValue={editing?.color}
+        />
       </div>
       {state.error && (
         <p className="text-sm text-expense bg-expense/10 border border-expense/20 rounded-xl px-4 py-2.5">
@@ -194,12 +178,11 @@ function PayInvoiceForm({
       </p>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <Label htmlFor="pay-amount">Valor (R$)</Label>
-          <Input
+          <Label htmlFor="pay-amount">Valor</Label>
+          <MoneyInput
             id="pay-amount"
             name="amount"
-            inputMode="decimal"
-            defaultValue={(remaining / 100).toFixed(2).replace(".", ",")}
+            defaultValue={String(remaining)}
             required
           />
         </div>

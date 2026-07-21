@@ -7,17 +7,28 @@ import { TransactionsClient } from "@/components/transactions/transactions-clien
 export default async function TransactionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ m?: string }>;
+  searchParams: Promise<{ m?: string; q?: string }>;
 }) {
   const user = await requireUser();
   const params = await searchParams;
   const ym = /^\d{4}-\d{2}$/.test(params.m ?? "") ? params.m! : currentYM();
+  const query = (params.q ?? "").trim();
+  const searching = query.length > 0;
   const { start, end } = monthRange(ym);
+
+  // com busca ativa, varre todos os meses; senão, só o mês selecionado
+  const txWhere = searching
+    ? {
+        userId: user.id,
+        description: { contains: query, mode: "insensitive" as const },
+      }
+    : { userId: user.id, date: { gte: start, lt: end } };
 
   const [transactions, categories, accounts, cards] = await Promise.all([
     prisma.transaction.findMany({
-      where: { userId: user.id, date: { gte: start, lt: end } },
+      where: txWhere,
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+      take: searching ? 300 : undefined,
     }),
     prisma.category.findMany({
       where: { userId: user.id },
@@ -41,13 +52,17 @@ export default async function TransactionsPage({
             Transações
           </h1>
           <p className="text-sm text-muted mt-0.5">
-            Todas as movimentações do mês, em contas e cartões.
+            {searching
+              ? "Buscando em todos os meses."
+              : "Todas as movimentações do mês, em contas e cartões."}
           </p>
         </div>
-        <MonthSelector ym={ym} basePath="/transactions" />
+        {!searching && <MonthSelector ym={ym} basePath="/transactions" />}
       </div>
 
       <TransactionsClient
+        initialQuery={query}
+        searching={searching}
         transactions={transactions.map((tx) => ({
           id: tx.id,
           description: tx.description,

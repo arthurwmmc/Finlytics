@@ -17,6 +17,8 @@ import { Modal } from "@/components/ui/modal";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { Input, Label } from "@/components/ui/field";
+import { MoneyInput } from "@/components/ui/money-input";
+import { ColorPicker } from "@/components/ui/color-picker";
 
 type GoalItem = {
   id: string;
@@ -38,7 +40,6 @@ function GoalForm({
   onDone: () => void;
 }) {
   const [icon, setIcon] = useState(editing?.icon ?? "🎯");
-  const [color, setColor] = useState(editing?.color ?? CATEGORY_COLORS[0]);
   const action = useMemo(
     () => (editing ? updateGoal.bind(null, editing.id) : createGoal),
     [editing]
@@ -67,17 +68,12 @@ function GoalForm({
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <Label htmlFor="goal-target">Valor-alvo (R$)</Label>
-          <Input
+          <Label htmlFor="goal-target">Valor-alvo</Label>
+          <MoneyInput
             id="goal-target"
             name="targetAmount"
-            inputMode="decimal"
             placeholder="0,00"
-            defaultValue={
-              editing
-                ? (editing.targetAmount / 100).toFixed(2).replace(".", ",")
-                : ""
-            }
+            defaultValue={editing ? String(editing.targetAmount) : undefined}
             required
           />
         </div>
@@ -115,25 +111,11 @@ function GoalForm({
       </div>
       <div>
         <Label>Cor</Label>
-        <div className="flex gap-2 flex-wrap" role="radiogroup" aria-label="Cor">
-          {CATEGORY_COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              role="radio"
-              aria-checked={color === c}
-              aria-label={`Cor ${c}`}
-              onClick={() => setColor(c)}
-              className={`size-8 rounded-full transition ${
-                color === c
-                  ? "ring-2 ring-white ring-offset-2 ring-offset-[#111827]"
-                  : "opacity-70 hover:opacity-100"
-              }`}
-              style={{ background: c }}
-            />
-          ))}
-        </div>
-        <input type="hidden" name="color" value={color} />
+        <ColorPicker
+          name="color"
+          presets={CATEGORY_COLORS}
+          defaultValue={editing?.color}
+        />
       </div>
       {state.error && (
         <p className="text-sm text-expense bg-expense/10 border border-expense/20 rounded-xl px-4 py-2.5">
